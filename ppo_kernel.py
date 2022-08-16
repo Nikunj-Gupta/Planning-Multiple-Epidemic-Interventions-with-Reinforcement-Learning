@@ -234,7 +234,7 @@ class Agent(nn.Module):
 
 if __name__ == "__main__":
     args = parse_args()
-    seeds = [3]
+    seeds = [0,1,2,3]
     for seed in seeds:
         args.seed = seed
         run_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"

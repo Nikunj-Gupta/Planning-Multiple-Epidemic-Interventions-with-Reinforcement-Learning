@@ -15,11 +15,52 @@ Combating an epidemic entails finding a plan that describes when and how to appl
 
 ### How To Run 
 
-#### Setting up the Epipolicy Environment 
+``` 
+# clone project
+git clone https://github.com/Nikunj-Gupta/Planning-Multiple-Epidemic-Interventions-with-Reinforcement-Learning.git
 
-#### Training 
+# Run PPO/SAC on multiple scenarios in EpiPolicy 
 
-#### Evaluation 
+python3 <RL_algorithm>.py —gym-id <scenario_name> 
+
+# Example: run PPO on SIR_A 
+python3 ppo_kernel.py —gym-id SIR_A
+
+# Example: run SAC on SIRV_B 
+python3 sac_kernel.py —gym-id SIRV_B 
+
+# To reproduce the results in the paper --> Refer/Use plots.ipynb 
+```
+
+Note: We used the following seeds: 0, 1, 2, 3 
+
+##### Other Options for PPO 
+
+```
+python3 ppo_kernel.py —gym-id <SCENARIO> 
+[--exp-name] [--learning-rate] [--seed]
+[--total-timesteps] [--torch-deterministic] 
+[--cuda][--track] [--wandb-project-name] 
+[--wandb-entity] [--capture-video] 
+[--policy_plot_interval] [--num-envs] 
+[--num-steps] [--anneal-lr] [--gae]
+[--gamma][--gae-lambda][--num-minibatches]
+[--update-epochs][--norm-adv][--clip-coef]
+[--clip-vloss][--ent-coef][--vf-coef]
+[--max-grad-norm][--target-kl] 
+```
+##### Other Options for SAC 
+
+```
+python3 sac_kernel.py —gym-id <SCENARIO> 
+[--exp-name] [--learning-starts] [--seed]
+[--total-timesteps] [--target-entropy-scale] 
+[--train-freq][--gradient-steps] 
+```
+##### To reproduce the baselines 
+```
+```
+
 
 ### Citation 
 

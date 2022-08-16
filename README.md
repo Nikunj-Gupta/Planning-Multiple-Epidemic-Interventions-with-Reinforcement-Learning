@@ -2,7 +2,7 @@
 
 PyTorch implementation of the paper:
 
-- Title: Planning Multiple Epidemic Interventions with Reinforcement Learning 
+- **Title**: Planning Multiple Epidemic Interventions with Reinforcement Learning 
 <!-- - Authors:  -->
 <!-- - Conference:  -->
 <!-- - More details:  -->

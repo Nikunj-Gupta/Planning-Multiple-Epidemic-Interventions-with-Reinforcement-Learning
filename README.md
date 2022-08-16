@@ -66,4 +66,4 @@ python3 sac_kernel.py —gym-id <SCENARIO>
 Code for baselines is in `plots.ipynb`
 
 ### Acknowledgements 
-We acknowledge [[https://github.com/vwxyzjn/cleanrl]](https://github.com/vwxyzjn/cleanrl) for a Clean Implementation of RL 
+We acknowledge [[https://github.com/vwxyzjn/cleanrl]](https://github.com/vwxyzjn/cleanrl) for a Clean Implementation of RL Algorithms 

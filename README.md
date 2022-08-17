@@ -44,7 +44,7 @@ Note: We used the following seeds: 0, 1, 2, 3
 ##### Other Options for PPO 
 
 ```
-python3 ppo_kernel.py —gym-id <SCENARIO> 
+python3 ppo_kernel.py —-gym-id <SCENARIO> 
 [--exp-name] [--learning-rate] [--seed]
 [--total-timesteps] [--torch-deterministic] 
 [--cuda][--track] [--wandb-project-name] 
@@ -59,7 +59,7 @@ python3 ppo_kernel.py —gym-id <SCENARIO>
 ##### Other Options for SAC 
 
 ```
-python3 sac_kernel.py —gym-id <SCENARIO> 
+python3 sac_kernel.py —-gym-id <SCENARIO> 
 [--exp-name] [--learning-starts] [--seed]
 [--total-timesteps] [--target-entropy-scale] 
 [--train-freq][--gradient-steps] 

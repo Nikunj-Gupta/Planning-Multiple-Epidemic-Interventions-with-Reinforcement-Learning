@@ -28,13 +28,13 @@ git clone https://github.com/Nikunj-Gupta/Planning-Multiple-Epidemic-Interventio
 
 # Run PPO/SAC on multiple scenarios in EpiPolicy 
 
-python3 <RL_algorithm>.py —gym-id <scenario_name> 
+python3 <RL_algorithm>.py —-gym-id <scenario_name> 
 
 # Example: run PPO on SIR_A 
-python3 ppo_kernel.py —gym-id SIR_A
+python3 ppo_kernel.py -—gym-id SIR_A
 
 # Example: run SAC on SIRV_B 
-python3 sac_kernel.py —gym-id SIRV_B 
+python3 sac_kernel.py -—gym-id SIRV_B 
 
 # To reproduce the results in the paper --> Refer/Use plots.ipynb 
 ```

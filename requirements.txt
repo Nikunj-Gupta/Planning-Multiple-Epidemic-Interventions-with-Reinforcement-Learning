@@ -1,0 +1,8 @@
+gym
+torch
+tensorboard
+scipy
+numba
+pandas
+sympy
+stable_baselines3

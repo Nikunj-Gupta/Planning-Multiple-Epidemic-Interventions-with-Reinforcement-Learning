@@ -13,12 +13,15 @@ Combating an epidemic entails finding a plan that describes when and how to appl
 
 ![The agent-environment interaction in the Markov decision process formalizing the epidemic planning problem.](EpiPolicyRL.png)
 
-### Requirements 
+### Selected Requirements 
 - Python 3.8/3.9 
 - Pytorch
 - stable-baselines3
-- gym==0.21
+- gym
 - Numba
+
+
+Note: For installing all requirements use --> `pip3 install -r requirements.txt`
 
 ### How To Run 
 
@@ -26,15 +29,18 @@ Combating an epidemic entails finding a plan that describes when and how to appl
 # clone project
 git clone https://github.com/Nikunj-Gupta/Planning-Multiple-Epidemic-Interventions-with-Reinforcement-Learning.git
 
+# Install requirements (preferably in a virtual environment)
+pip3 install -r requirements.txt
+
 # Run PPO/SAC on multiple scenarios in EpiPolicy 
 
-python3 <RL_algorithm>.py —-gym-id <scenario_name> 
+python3 <RL_algorithm>.py --gym-id <scenario_name> 
 
 # Example: run PPO on SIR_A 
-python3 ppo_kernel.py -—gym-id SIR_A
+python3 ppo_kernel.py --gym-id SIR_A
 
 # Example: run SAC on SIRV_B 
-python3 sac_kernel.py -—gym-id SIRV_B 
+python3 sac_kernel.py --gym-id SIRV_B 
 
 # To reproduce the results in the paper --> Refer/Use plots.ipynb 
 ```
@@ -44,7 +50,7 @@ Note: We used the following seeds: 0, 1, 2, 3
 ##### Other Options for PPO 
 
 ```
-python3 ppo_kernel.py —-gym-id <SCENARIO> 
+python3 ppo_kernel.py --gym-id <SCENARIO> 
 [--exp-name] [--learning-rate] [--seed]
 [--total-timesteps] [--torch-deterministic] 
 [--cuda][--track] [--wandb-project-name] 
@@ -59,7 +65,7 @@ python3 ppo_kernel.py —-gym-id <SCENARIO>
 ##### Other Options for SAC 
 
 ```
-python3 sac_kernel.py —-gym-id <SCENARIO> 
+python3 sac_kernel.py --gym-id <SCENARIO> 
 [--exp-name] [--learning-starts] [--seed]
 [--total-timesteps] [--target-entropy-scale] 
 [--train-freq][--gradient-steps] 

@@ -220,6 +220,7 @@ if __name__ == "__main__":
                 self.tb_formatter = next(formatter for formatter in output_formats if isinstance(formatter, TensorBoardOutputFormat))
 
             def _on_step(self) -> bool:
+                # PLOT POLICY
                 if self.n_calls % self._log_freq == 0:
                     env_obs = torch.Tensor(self.training_env.reset())
                     test_obs = torch.Tensor(test_env.reset())

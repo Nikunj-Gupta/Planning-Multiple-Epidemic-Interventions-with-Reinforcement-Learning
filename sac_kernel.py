@@ -122,7 +122,7 @@ def parse_args(main_args = None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--exp-name", type=str, default="SAC",
         help="the name of this experiment")
-    parser.add_argument("--gym-id", type=str, default="HalfCheetahBulletEnv-v0",
+    parser.add_argument("--gym-id", type=str, default="SIR_A",
         help="the id of the gym environment")
 #     parser.add_argument("--learning-rate", type=float, default=3e-4,
 #         help="the learning rate of the optimizer")
@@ -198,7 +198,7 @@ def parse_args(main_args = None):
 #####
 if __name__ == "__main__":
     args = parse_args()
-    seeds = [2]
+    seeds = [0,1,2,3]
     for seed in seeds:
         args.seed = seed
         run_name = f"{args.gym_id}__{args.exp_name}_scale__{args.seed}__{int(time.time())}"

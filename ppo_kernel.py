@@ -24,7 +24,7 @@ class EpiEnv(gym.Env):
     """Custom Environment that follows gym interface"""
     metadata = {'render.modes': ['human']}
 
-    def __init__(self, session):
+    def __init__(self, session, vac_starts):
         super(EpiEnv, self).__init__()
         self.epi = construct_epidemic(session)
         total_population = np.sum(self.epi.static.default_state.obs.current_comp)
@@ -49,8 +49,19 @@ class EpiEnv(gym.Env):
         self.action_space = spaces.Box(low=0, high=1, shape=(action_count,), dtype=np.float64)
         # Example for using image as input:
         self.observation_space = spaces.Box(low=0, high=total_population, shape=(obs_count,), dtype=np.float64)
+        self.time_passed = 0 # To keep track of how many days have passed 
+        self.vac_starts = vac_starts # number of days to prepare a vaccination / make it available 
+
 
     def step(self, action):
+        if self.time_passed < self.vac_starts: 
+            action[1] = 0 
+        # print("================================================================")
+        # print("time elapsed: ", self.time_passed) 
+        # print("action: ", action) 
+        # print("================================================================")
+        self.time_passed += PERIOD 
+
         expanded_action = np.zeros(len(self.act_domain), dtype=np.float64)
         index = 0
         for i in range(len(self.act_domain)):
@@ -72,6 +83,7 @@ class EpiEnv(gym.Env):
             state, r, done = self.epi.step(epi_action)
             total_r += r
             if done:
+                self.time_passed = 0 
                 break
         return state.obs.current_comp.flatten(), total_r, done, dict()
 
@@ -108,6 +120,9 @@ def parse_args(main_args = None):
         help="the entity (team) of wandb's project")
     parser.add_argument("--capture-video", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="weather to capture videos of the agent performances (check out `videos` folder)")
+    parser.add_argument("--vac-starts", type=int, default=0, 
+        help="vac_starts")
+
 
     parser.add_argument("--policy_plot_interval", type=int, default=1,
         help="seed of the experiment")
@@ -154,14 +169,16 @@ def parse_args(main_args = None):
     # fmt: on
     return args
 
-epi_ids = ["SIR_A", "SIR_B", "SIRV_A", "SIRV_B", "COVID_A", "COVID_B", "COVID_C"]
+epi_ids = ["SIR_A", "SIR_B", "SIRV_A", "SIRV_B", 
+            "COVID_A", "COVID_B", "COVID_C"] 
 
-def make_env(gym_id, seed, idx, capture_video, run_name):
+def make_env(gym_id, seed, idx, capture_video, run_name, vac_starts):
     def thunk():
-        if gym_id in epi_ids:
-            fp = open('jsons/{}.json'.format(gym_id), 'r')
-            session = json.load(fp)
-            env = EpiEnv(session)
+        if 'jsons'in gym_id: 
+            if gym_id.split('/')[-1] in epi_ids:
+                fp = open('{}.json'.format(gym_id), 'r')
+                session = json.load(fp)
+                env = EpiEnv(session, vac_starts=vac_starts)
         else:
             env = gym.make(gym_id)
         env = gym.wrappers.RecordEpisodeStatistics(env)
@@ -181,12 +198,13 @@ def make_env(gym_id, seed, idx, capture_video, run_name):
 
     return thunk
 
-def make_primal_env(gym_id):
+def make_primal_env(gym_id, vac_starts):
     def thunk():
-        if gym_id in epi_ids:
-            fp = open('jsons/{}.json'.format(gym_id), 'r')
-            session = json.load(fp)
-            env = EpiEnv(session)
+        if 'jsons'in gym_id: 
+            if gym_id.split('/')[-1] in epi_ids:
+                fp = open('{}.json'.format(gym_id), 'r')
+                session = json.load(fp)
+                env = EpiEnv(session, vac_starts=vac_starts)
         else:
             env = gym.make(gym_id)
         return env
@@ -237,7 +255,7 @@ if __name__ == "__main__":
     seeds = [0,1,2,3]
     for seed in seeds:
         args.seed = seed
-        run_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
+        run_name = f"{args.gym_id.split('/')[-1]}__{args.exp_name}__{args.seed}__{int(time.time())}"
         print("Running", run_name)
         writer = SummaryWriter(f"runs/{run_name}")
         writer.add_text(
@@ -258,9 +276,9 @@ if __name__ == "__main__":
         #     [make_env(args.gym_id, args.seed + i, i, args.capture_video, run_name) for i in range(args.num_envs)]
         # )
         envs = gym.vector.AsyncVectorEnv(
-            [make_env(args.gym_id, args.seed + i, i, args.capture_video, run_name) for i in range(args.num_envs)]
+            [make_env(args.gym_id, args.seed + i, i, args.capture_video, run_name, vac_starts=args.vac_starts) for i in range(args.num_envs)]
         )
-        test_env = make_primal_env(args.gym_id)()
+        test_env = make_primal_env(args.gym_id, vac_starts=args.vac_starts)()
         # test_env = make_env(args.gym_id, args.seed, 0, args.capture_video, run_name)()
         assert isinstance(envs.single_action_space, gym.spaces.Box), "only continuous action space is supported"
 

@@ -12,7 +12,7 @@ class EpiEnv(gym.Env):
     """Custom Environment that follows gym interface"""
     metadata = {'render.modes': ['human']}
 
-    def __init__(self, session):
+    def __init__(self, session, vac_starts):
         super(EpiEnv, self).__init__()
         self.epi = construct_epidemic(session)
         total_population = np.sum(self.epi.static.default_state.obs.current_comp)
@@ -38,7 +38,20 @@ class EpiEnv(gym.Env):
         # Example for using image as input:
         self.observation_space = spaces.Box(low=0, high=total_population, shape=(obs_count,), dtype=np.float32)
 
+        self.time_passed = 0 # To keep track of how many days have passed 
+        self.vac_starts = vac_starts # number of days to prepare a vaccination / make it available 
+
     def step(self, action):
+        if self.time_passed < self.vac_starts: 
+            action[1] = 0 
+        # print("================================================================")
+        # print("time elapsed: ", self.time_passed) 
+        # print("action: ", action) 
+        # print("================================================================")
+
+        self.time_passed += PERIOD 
+
+
         expanded_action = np.zeros(len(self.act_domain), dtype=np.float32)
         index = 0
         for i in range(len(self.act_domain)):
@@ -60,6 +73,7 @@ class EpiEnv(gym.Env):
             state, r, done = self.epi.step(epi_action)
             total_r += r
             if done:
+                self.time_passed = 0 
                 break
         return state.obs.current_comp.flatten(), total_r, done, dict()
 
@@ -81,14 +95,16 @@ class RewardScale(gym.RewardWrapper):
         return rew * self.scale
     
 ######
-epi_ids = ["SIR_A", "SIR_B", "SIRV_A", "SIRV_B", "COVID_A", "COVID_B", "COVID_C"]
+epi_ids = ["SIR_A", "SIR_B", "SIRV_A", "SIRV_B", 
+            "COVID_A", "COVID_B", "COVID_C"] 
 
-def make_env(gym_id, seed, idx):
+def make_env(gym_id, seed, idx, vac_starts):
     def thunk():
-        if gym_id in epi_ids:
-            fp = open('jsons/{}.json'.format(gym_id), 'r')
-            session = json.load(fp)
-            env = EpiEnv(session)
+        if 'jsons'in gym_id: 
+            if gym_id.split('/')[-1] in epi_ids:
+                fp = open('{}.json'.format(gym_id), 'r')
+                session = json.load(fp)
+                env = EpiEnv(session, vac_starts=vac_starts)
         else:
             env = gym.make(gym_id)
         env = gym.wrappers.RecordEpisodeStatistics(env)
@@ -106,12 +122,13 @@ def make_env(gym_id, seed, idx):
 
     return thunk
 
-def make_primal_env(gym_id):
+def make_primal_env(gym_id, vac_starts):
     def thunk():
-        if gym_id in epi_ids:
-            fp = open('jsons/{}.json'.format(gym_id), 'r')
-            session = json.load(fp)
-            env = EpiEnv(session)
+        if 'jsons'in gym_id: 
+            if gym_id.split('/')[-1] in epi_ids:
+                fp = open('{}.json'.format(gym_id), 'r')
+                session = json.load(fp)
+                env = EpiEnv(session, vac_starts=vac_starts)
         else:
             env = gym.make(gym_id)
         return env
@@ -130,6 +147,8 @@ def parse_args(main_args = None):
         help="seed of the experiment")
     parser.add_argument("--total-timesteps", type=int, default=210000,
         help="total timesteps of the experiments")
+    parser.add_argument("--vac-starts", type=int, default=0,
+        help="vac_starts")
 #     parser.add_argument("--torch-deterministic", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
 #         help="if toggled, `torch.backends.cudnn.deterministic=False`")
 #     parser.add_argument("--cuda", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
@@ -201,9 +220,9 @@ if __name__ == "__main__":
     seeds = [0,1,2,3]
     for seed in seeds:
         args.seed = seed
-        run_name = f"{args.gym_id}__{args.exp_name}_scale__{args.seed}__{int(time.time())}"
-        env = make_env(args.gym_id, args.seed, 0)()
-        test_env = make_primal_env(args.gym_id)()
+        run_name = f"{args.gym_id.split('/')[-1]}__{args.exp_name}_scale__{args.seed}__{int(time.time())}"
+        env = make_env(args.gym_id, args.seed, 0, vac_starts=args.vac_starts)()
+        test_env = make_primal_env(args.gym_id, vac_starts=args.vac_starts)()
 
         import torch
         from stable_baselines3 import SAC
@@ -266,6 +285,6 @@ if __name__ == "__main__":
         # target_entropy = target_entropies[choice % 3]
 
         print(f"Running with {run_name}")
-        model = SAC("MlpPolicy", env, verbose=1, tensorboard_log="runs/", learning_starts=args.learning_starts, target_entropy=-args.target_entropy_scale * env.action_space.shape[0],
+        model = SAC("MlpPolicy", env, verbose=0, tensorboard_log="runs/", learning_starts=args.learning_starts, target_entropy=-args.target_entropy_scale * env.action_space.shape[0],
                    train_freq=args.train_freq, gradient_steps=args.gradient_steps)
         model.learn(total_timesteps=args.total_timesteps, log_interval=4, callback=SummaryWriterCallback(), tb_log_name=run_name)

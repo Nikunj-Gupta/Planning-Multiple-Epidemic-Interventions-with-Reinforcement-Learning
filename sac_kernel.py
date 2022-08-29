@@ -43,7 +43,7 @@ class EpiEnv(gym.Env):
 
     def step(self, action):
         if self.time_passed < self.vac_starts: 
-            action[1] = 0 
+            action[0] = 0 
         # print("================================================================")
         # print("time elapsed: ", self.time_passed) 
         # print("action: ", action) 

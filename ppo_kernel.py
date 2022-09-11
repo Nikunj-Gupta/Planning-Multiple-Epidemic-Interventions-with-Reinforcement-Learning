@@ -68,7 +68,7 @@ class EpiEnv(gym.Env):
             if self.act_domain[i, 0] == self.act_domain[i, 1]:
                 expanded_action[i] = self.act_domain[i, 0]
             else:
-                expanded_action[i] = action[index]
+                expanded_action[i] = action[0][index]
                 index += 1
 
         epi_action = []
@@ -100,7 +100,7 @@ def parse_args(main_args = None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--exp-name", type=str, default="PPO",
         help="the name of this experiment")
-    parser.add_argument("--gym-id", type=str, default="SIR_A",
+    parser.add_argument("--gym-id", type=str, default="jsons/SIRV_A",
         help="the id of the gym environment")
     parser.add_argument("--learning-rate", type=float, default=3e-4,
         help="the learning rate of the optimizer")
@@ -123,6 +123,8 @@ def parse_args(main_args = None):
         help="weather to capture videos of the agent performances (check out `videos` folder)")
     parser.add_argument("--vac-starts", type=int, default=0, 
         help="vac_starts")
+    parser.add_argument("--load", type=str, default=None,  
+        help="load from given path") 
 
 
     parser.add_argument("--policy_plot_interval", type=int, default=1,
@@ -221,27 +223,28 @@ class Agent(nn.Module):
     def __init__(self, envs):
         super(Agent, self).__init__()
         self.critic = nn.Sequential(
-            layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 64)),
+            layer_init(nn.Linear(np.array(envs.observation_space.shape).prod(), 64)),
             nn.Tanh(),
             layer_init(nn.Linear(64, 64)),
             nn.Tanh(),
             layer_init(nn.Linear(64, 1), std=1.0),
         )
         self.actor_mean = nn.Sequential(
-            layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 64)),
+            layer_init(nn.Linear(np.array(envs.observation_space.shape).prod(), 64)),
             nn.Tanh(),
             layer_init(nn.Linear(64, 64)),
             nn.Tanh(),
-            layer_init(nn.Linear(64, np.prod(envs.single_action_space.shape)), std=0.01),
+            layer_init(nn.Linear(64, np.prod(envs.action_space.shape)), std=0.01),
         )
-        self.actor_logstd = nn.Parameter(torch.zeros(1, np.prod(envs.single_action_space.shape)))
+        self.actor_logstd = nn.Parameter(torch.zeros(1, np.prod(envs.action_space.shape)))
+        self.num_actions = envs.action_space.shape[0]
 
     def get_value(self, x):
         return self.critic(x)
 
     def get_action_and_value(self, x, action=None):
         action_mean = self.actor_mean(x)
-        action_logstd = self.actor_logstd.expand_as(action_mean)
+        action_logstd = self.actor_logstd.expand_as(action_mean.view(-1, self.num_actions))
         action_std = torch.exp(action_logstd)
         probs = Normal(action_mean, action_std)
         if action is None:
@@ -249,12 +252,13 @@ class Agent(nn.Module):
         return action, probs.log_prob(action).sum(1), probs.entropy().sum(1), self.critic(x)
 
     def get_action_mean(self, x):
-        return self.actor_mean(x)
+        return self.actor_mean(x).view(-1, self.num_actions)
 
 if __name__ == "__main__":
     args = parse_args()
-    seeds = [0,1,2,3]
+    seeds = [0]
     for seed in seeds:
+        obs_norm_params = {} 
         args.seed = seed
         run_name = f"{args.gym_id.split('/')[-1]}__{args.exp_name}__{args.seed}__{int(time.time())}"
         print("Running", run_name)
@@ -276,19 +280,21 @@ if __name__ == "__main__":
         # envs = gym.vector.SyncVectorEnv(
         #     [make_env(args.gym_id, args.seed + i, i, args.capture_video, run_name) for i in range(args.num_envs)]
         # )
-        envs = gym.vector.AsyncVectorEnv(
-            [make_env(args.gym_id, args.seed + i, i, args.capture_video, run_name, vac_starts=args.vac_starts) for i in range(args.num_envs)]
-        )
+        # envs = gym.vector.AsyncVectorEnv(
+        #     [make_env(args.gym_id, args.seed + i, i, args.capture_video, run_name, vac_starts=args.vac_starts) for i in range(args.num_envs)]
+        # )
+        envs = make_env(args.gym_id, args.seed, 0, args.capture_video, run_name, vac_starts=args.vac_starts)()
+
         test_env = make_primal_env(args.gym_id, vac_starts=args.vac_starts)()
         # test_env = make_env(args.gym_id, args.seed, 0, args.capture_video, run_name)()
-        assert isinstance(envs.single_action_space, gym.spaces.Box), "only continuous action space is supported"
+        assert isinstance(envs.action_space, gym.spaces.Box), "only continuous action space is supported"
 
         agent = Agent(envs).to(device)
         optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
 
         # ALGO Logic: Storage setup
-        obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
-        actions = torch.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape).to(device)
+        obs = torch.zeros((args.num_steps, args.num_envs) + envs.observation_space.shape).to(device)
+        actions = torch.zeros((args.num_steps, args.num_envs) + envs.action_space.shape).to(device)
         logprobs = torch.zeros((args.num_steps, args.num_envs)).to(device)
         rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
         dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
@@ -325,13 +331,20 @@ if __name__ == "__main__":
                 # TRY NOT TO MODIFY: execute the game and log data.
                 next_obs, reward, done, info = envs.step(action.cpu().numpy())
                 rewards[step] = torch.tensor(reward).to(device).view(-1)
-                next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(done).to(device)
+                next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor([done]).to(device)
+
+                # for item in info:
+                #     if "episode" in item.keys():
+                #         print(f"global_step={global_step}, episodic_return={item['episode']['r']}")
+                #         writer.add_scalar("charts/episodic_return", item["episode"]["r"], global_step)
+                #         writer.add_scalar("charts/episodic_length", item["episode"]["l"], global_step)
+                #         break
 
                 for item in info:
-                    if "episode" in item.keys():
-                        print(f"global_step={global_step}, episodic_return={item['episode']['r']}")
-                        writer.add_scalar("charts/episodic_return", item["episode"]["r"], global_step)
-                        writer.add_scalar("charts/episodic_length", item["episode"]["l"], global_step)
+                    if "episode" == item:
+                        print(f"global_step={global_step}, episodic_return={info[item]['r']}")
+                        writer.add_scalar("charts/episodic_return", info[item]["r"], global_step)
+                        writer.add_scalar("charts/episodic_length", info[item]["l"], global_step)
                         break
 
             # bootstrap value if not done
@@ -363,9 +376,9 @@ if __name__ == "__main__":
                     advantages = returns - values
 
             # flatten the batch
-            b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
+            b_obs = obs.reshape((-1,) + envs.observation_space.shape)
             b_logprobs = logprobs.reshape(-1)
-            b_actions = actions.reshape((-1,) + envs.single_action_space.shape)
+            b_actions = actions.reshape((-1,) + envs.action_space.shape)
             b_advantages = advantages.reshape(-1)
             b_returns = returns.reshape(-1)
             b_values = values.reshape(-1)
@@ -442,7 +455,7 @@ if __name__ == "__main__":
             writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
             # PLOT POLICY
-            if args.gym_id in epi_ids and (update - 1) % args.policy_plot_interval == 0:
+            if args.gym_id.split('/')[-1] in epi_ids and (update - 1) % args.policy_plot_interval == 0:
                 test_obs = torch.Tensor(test_env.reset())
                 env_obs = torch.Tensor(envs.reset()).to(device)
                 timestep = 0
@@ -455,7 +468,7 @@ if __name__ == "__main__":
                         test_action_mean = torch.mean(action_mean, 0)
                         test_action_mean = torch.clamp(test_action_mean, 0, 1)
 
-                    test_obs, r, done, _ = test_env.step(test_action_mean.cpu().numpy())
+                    test_obs, r, done, _ = test_env.step(test_action_mean.expand_as(action_mean).cpu().numpy())
                     test_obs = torch.Tensor(test_obs)
                     itv_index = 0
                     itv_array = []
@@ -477,6 +490,28 @@ if __name__ == "__main__":
                 writer.add_scalar('charts/learning_curve', total_r, global_step)
                 print("At global step {}, total_rewards={}".format(global_step, total_r))
 
+                """
+                Saving Model Checkpoints 
+                """
+                print("Saving Checkpoint:") 
+                checkpoints_path = 'runs/{}/model_checkpoints/'.format(run_name) 
+                if not os.path.exists(checkpoints_path): 
+                    os.makedirs(checkpoints_path) 
+                torch.save(agent.state_dict(), os.path.join(checkpoints_path, 'checkpoint_{}'.format(global_step))) 
+                
+                """
+                Saving Environment Normalization Metrics 
+                """
+                obs_norm_params[global_step] = {
+                        "envs.obs_rms.mean": envs.obs_rms.mean.tolist(), 
+                        "envs.obs_rms.var": envs.obs_rms.var.tolist(), 
+                        "envs.obs_rms.count": envs.obs_rms.count
+                }
+                with open('runs/{}/obs_normalization.json'.format(run_name), 'w') as f:
+                    json.dump(obs_norm_params, f) 
+                # print("================================================================")
+                # print(obs_norm_params) 
+                # print("================================================================")
         csv_file.close()
         envs.close()
         writer.close()

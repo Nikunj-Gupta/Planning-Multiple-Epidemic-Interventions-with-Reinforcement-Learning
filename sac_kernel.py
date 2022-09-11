@@ -217,7 +217,7 @@ def parse_args(main_args = None):
 #####
 if __name__ == "__main__":
     args = parse_args()
-    seeds = [0,1,2,3]
+    seeds = [0]
     for seed in seeds:
         args.seed = seed
         run_name = f"{args.gym_id.split('/')[-1]}__{args.exp_name}_scale__{args.seed}__{int(time.time())}"
@@ -226,7 +226,7 @@ if __name__ == "__main__":
 
         import torch
         from stable_baselines3 import SAC
-        from stable_baselines3.common.callbacks import BaseCallback
+        from stable_baselines3.common.callbacks import BaseCallback, CheckpointCallback, CallbackList
         from stable_baselines3.common.logger import TensorBoardOutputFormat
 
         class SummaryWriterCallback(BaseCallback):
@@ -277,6 +277,11 @@ if __name__ == "__main__":
                     csv_file = open('runs/{}_1/records.csv'.format(run_name), 'a')
                     csv_file.write(line)
                     csv_file.close()
+                    line2 = '|'.join([str(self.num_timesteps), str(env.obs_rms.mean), str(env.obs_rms.var), str(env.obs_rms.count)]) + '\n' 
+                    csv_file2 = open('runs/{}_1/obs_normalization.csv'.format(run_name), 'a')
+                    csv_file2.write(line2)
+                    csv_file2.close()
+
 
         # learning_starts = [1000, 5000, 10000]
         # target_entropies = [-env.action_space.shape[0], -2*env.action_space.shape[0], -4*env.action_space.shape[0]]
@@ -287,4 +292,14 @@ if __name__ == "__main__":
         print(f"Running with {run_name}")
         model = SAC("MlpPolicy", env, verbose=0, tensorboard_log="runs/", learning_starts=args.learning_starts, target_entropy=-args.target_entropy_scale * env.action_space.shape[0],
                    train_freq=args.train_freq, gradient_steps=args.gradient_steps)
-        model.learn(total_timesteps=args.total_timesteps, log_interval=4, callback=SummaryWriterCallback(), tb_log_name=run_name)
+        # model.learn(total_timesteps=args.total_timesteps, log_interval=4, callback=SummaryWriterCallback(), tb_log_name=run_name)
+        checkpoints_path = 'runs/{}_1/model_checkpoints/'.format(run_name) 
+        model.learn(
+            total_timesteps=args.total_timesteps, 
+            log_interval=4, 
+            callback=CallbackList([
+                SummaryWriterCallback(), 
+                CheckpointCallback(
+                    save_freq=292, 
+                    save_path=checkpoints_path)]), 
+            tb_log_name=run_name) 

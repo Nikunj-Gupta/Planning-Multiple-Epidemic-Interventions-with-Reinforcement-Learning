@@ -501,7 +501,7 @@ if __name__ == "__main__":
                     checkpoints_path = 'runs/{}/model_checkpoints/'.format(run_name) 
                     if not os.path.exists(checkpoints_path): 
                         os.makedirs(checkpoints_path) 
-                    torch.save(agent.state_dict(), os.path.join(checkpoints_path, 'best_checkpoint_{}'.format(global_step))) 
+                    torch.save(agent.state_dict(), os.path.join(checkpoints_path, 'best_checkpoint')) 
                 
                 """
                 Saving Environment Normalization Metrics 

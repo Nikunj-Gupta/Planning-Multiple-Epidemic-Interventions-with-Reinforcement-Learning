@@ -267,7 +267,7 @@
       "param": "beta",
       "locale": "UnitedProvinces",
       "group": "Children",
-      "value": "0.3"
+      "value": "30"
     },
     {
       "id": 1,
@@ -281,7 +281,7 @@
       "param": "beta",
       "locale": "UnitedProvinces",
       "group": "Seniors",
-      "value": "0.3"
+      "value": "30"
     },
     {
       "id": 3,
@@ -295,7 +295,7 @@
       "param": "beta",
       "locale": "UnitedProvinces",
       "group": "Adults",
-      "value": "0.3"
+      "value": "30"
     },
     {
       "id": 5,

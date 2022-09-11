@@ -3,6 +3,7 @@ import os
 import random
 import time
 from distutils.util import strtobool
+import math 
 
 import gym
 import numpy as np
@@ -308,6 +309,7 @@ if __name__ == "__main__":
         num_updates = args.total_timesteps // args.batch_size
 
         csv_file = open('runs/{}/records.csv'.format(run_name), 'w')
+        best_total_r = -math.inf 
 
         for update in range(1, num_updates + 1):
             # Annealing the rate if instructed to do so.
@@ -342,7 +344,7 @@ if __name__ == "__main__":
 
                 for item in info:
                     if "episode" == item:
-                        print(f"global_step={global_step}, episodic_return={info[item]['r']}")
+                        # print(f"global_step={global_step}, episodic_return={info[item]['r']}")
                         writer.add_scalar("charts/episodic_return", info[item]["r"], global_step)
                         writer.add_scalar("charts/episodic_length", info[item]["l"], global_step)
                         break
@@ -451,7 +453,7 @@ if __name__ == "__main__":
             writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
             writer.add_scalar("losses/clipfrac", np.mean(clipfracs), global_step)
             writer.add_scalar("losses/explained_variance", explained_var, global_step)
-            print("SPS:", int(global_step / (time.time() - start_time)))
+            # print("SPS:", int(global_step / (time.time() - start_time)))
             writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
             # PLOT POLICY
@@ -488,16 +490,18 @@ if __name__ == "__main__":
                 line = '|'.join([str(global_step), str(total_r), str(itv_line)]) + '\n'
                 csv_file.write(line)
                 writer.add_scalar('charts/learning_curve', total_r, global_step)
-                print("At global step {}, total_rewards={}".format(global_step, total_r))
+                print("At global step {}, total_rewards={}, best_total_r={}".format(global_step, total_r, best_total_r))
 
                 """
                 Saving Model Checkpoints 
                 """
-                print("Saving Checkpoint:") 
-                checkpoints_path = 'runs/{}/model_checkpoints/'.format(run_name) 
-                if not os.path.exists(checkpoints_path): 
-                    os.makedirs(checkpoints_path) 
-                torch.save(agent.state_dict(), os.path.join(checkpoints_path, 'checkpoint_{}'.format(global_step))) 
+                if total_r > best_total_r: 
+                    best_total_r = total_r 
+                    print("Saving Best Checkpoint:") 
+                    checkpoints_path = 'runs/{}/model_checkpoints/'.format(run_name) 
+                    if not os.path.exists(checkpoints_path): 
+                        os.makedirs(checkpoints_path) 
+                    torch.save(agent.state_dict(), os.path.join(checkpoints_path, 'best_checkpoint_{}'.format(global_step))) 
                 
                 """
                 Saving Environment Normalization Metrics 

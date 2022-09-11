@@ -7,6 +7,7 @@ from gym import spaces
 from epipolicy.core.epidemic import construct_epidemic
 from epipolicy.obj.act import construct_act
 import numpy as np
+import math 
 
 class EpiEnv(gym.Env):
     """Custom Environment that follows gym interface"""
@@ -230,6 +231,9 @@ if __name__ == "__main__":
         from stable_baselines3.common.logger import TensorBoardOutputFormat
 
         class SummaryWriterCallback(BaseCallback):
+            def __init__(self, verbose: int = 0):
+                super().__init__()
+                self.best_total_r = -math.inf 
             def _on_training_start(self):
                 self._log_freq = 292  # log every 1000 calls
 
@@ -272,7 +276,7 @@ if __name__ == "__main__":
                         timestep += PERIOD
                     line = '|'.join([str(self.num_timesteps), str(total_r), str(itv_line)]) + '\n'
                     self.tb_formatter.writer.add_scalar("charts/learning_curve", total_r, self.num_timesteps)
-                    print("At global step {}, total_rewards={}".format(self.num_timesteps, total_r))
+                    print("At global step {}, total_rewards={}, best_total_rewards={}".format(self.num_timesteps, total_r, self.best_total_r))
                     self.tb_formatter.writer.flush()
                     csv_file = open('runs/{}_1/records.csv'.format(run_name), 'a')
                     csv_file.write(line)
@@ -282,6 +286,13 @@ if __name__ == "__main__":
                     csv_file2.write(line2)
                     csv_file2.close()
 
+                    """
+                    Saving Model Checkpoints 
+                    """
+                    if total_r > self.best_total_r: 
+                        self.best_total_r = total_r 
+                        print("Saving Best Checkpoint:") 
+                        self.model.save('runs/{}_1/model_checkpoints/'.format(run_name) )
 
         # learning_starts = [1000, 5000, 10000]
         # target_entropies = [-env.action_space.shape[0], -2*env.action_space.shape[0], -4*env.action_space.shape[0]]
@@ -292,14 +303,4 @@ if __name__ == "__main__":
         print(f"Running with {run_name}")
         model = SAC("MlpPolicy", env, verbose=0, tensorboard_log="runs/", learning_starts=args.learning_starts, target_entropy=-args.target_entropy_scale * env.action_space.shape[0],
                    train_freq=args.train_freq, gradient_steps=args.gradient_steps)
-        # model.learn(total_timesteps=args.total_timesteps, log_interval=4, callback=SummaryWriterCallback(), tb_log_name=run_name)
-        checkpoints_path = 'runs/{}_1/model_checkpoints/'.format(run_name) 
-        model.learn(
-            total_timesteps=args.total_timesteps, 
-            log_interval=4, 
-            callback=CallbackList([
-                SummaryWriterCallback(), 
-                CheckpointCallback(
-                    save_freq=292, 
-                    save_path=checkpoints_path)]), 
-            tb_log_name=run_name) 
+        model.learn(total_timesteps=args.total_timesteps, log_interval=4, callback=SummaryWriterCallback(), tb_log_name=run_name)

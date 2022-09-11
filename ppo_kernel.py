@@ -256,7 +256,7 @@ class Agent(nn.Module):
 
 if __name__ == "__main__":
     args = parse_args()
-    seeds = [0]
+    seeds = [0,1,2,3]
     for seed in seeds:
         obs_norm_params = {} 
         args.seed = seed

@@ -217,7 +217,7 @@ def parse_args(main_args = None):
 #####
 if __name__ == "__main__":
     args = parse_args()
-    seeds = [0]
+    seeds = [0,1,2,3]
     for seed in seeds:
         args.seed = seed
         run_name = f"{args.gym_id.split('/')[-1]}__{args.exp_name}_scale__{args.seed}__{int(time.time())}"
